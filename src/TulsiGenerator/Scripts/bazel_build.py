@@ -25,6 +25,7 @@ import io
 import json
 import os
 import pipes
+import plistlib
 import re
 import shutil
 import signal
@@ -340,17 +341,19 @@ class _OptionsParser(object):
 
   @staticmethod
   def _GetXcodeVersionString():
-    """Returns Xcode version info from the environment as a string."""
-    reported_version = os.environ['XCODE_VERSION_ACTUAL']
-    match = re.match(r'(\d{2})(\d)(\d)$', reported_version)
-    if not match:
-      _PrintUnbuffered('Warning: Failed to extract Xcode version from %s' % (
-          reported_version))
-      return None
-    major_version = int(match.group(1))
-    minor_version = int(match.group(2))
-    fix_version = int(match.group(3))
-    return '%d.%d.%d' % (major_version, minor_version, fix_version)
+    """Returns Xcode version info from the Xcode's version.plist.
+
+    Just reading XCODE_VERSION_ACTUAL from the environment seems like
+    a more reasonable implementation, but has shown to be unreliable,
+    at least when using Xcode 11.3.1 and opening the project within an
+    Xcode workspace.
+    """
+    developer_dir = os.environ['DEVELOPER_DIR']
+    app_dir = developer_dir.split(".app")[0] + ".app"
+    version_plist_path = os.path.join(app_dir, "Contents", "version.plist")
+    # python2 API to plistlib - may need updating if/when Tulsi bumps to python3
+    plist = plistlib.readPlist(version_plist_path)
+    return plist['CFBundleShortVersionString']
 
   @staticmethod
   def _ComputeXcodeVersionFlag():
